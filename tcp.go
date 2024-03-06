@@ -9,8 +9,9 @@ import (
 )
 
 const (
-	iPfx string = "[INFO] "
-	ePfx string = "[ERROR] "
+	BUFFSIZE int    = 1024
+	IPFX     string = "[INFO] "
+	EPFX     string = "[ERROR] "
 )
 
 var (
@@ -26,22 +27,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	conn, err := getConn()
+	conn, listener, err := getConn()
 	if err != nil {
-		log.Println(ePfx+"conexión fallida:", err)
-		os.Exit(2)
+		log.Fatalln(EPFX+"conexión fallida:", err)
 	}
-	log.Println(iPfx+"conectado a", conn.RemoteAddr())
+	log.Println(IPFX+"conectado a", conn.RemoteAddr())
 
-	go handle(conn, os.Stdin)
-	go handle(os.Stdout, conn)
-
-	switch err = <-errch; err {
-	case io.EOF:
-		log.Println(iPfx+"conexión terminada:", err)
-	default:
-		log.Fatalln(ePfx+"error en la conexión:", err)
-	}
+	handleConnections(conn, listener)
 }
 
 func parseArgs() bool {
@@ -59,34 +51,58 @@ func parseArgs() bool {
 	return flag.Parsed()
 }
 
-func getConn() (net.Conn, error) {
+func getConn() (net.Conn, net.Listener, error) {
 	if listen {
 		listener, err := net.Listen("tcp", addr)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		log.Println(iPfx+"servidor iniciado en", addr)
+		log.Println(IPFX+"servidor iniciado en", addr)
 
 		conn, err := listener.Accept()
-		return conn, err
+		return conn, listener, err
 	} else {
 		conn, err := net.Dial("tcp", addr)
-		return conn, err
+		return conn, nil, err
 	}
 }
 
-func handle(out io.WriteCloser, in io.ReadCloser) {
-	buff := make([]byte, 1024)
-	defer out.Close()
-	defer in.Close()
+func handleConnections(conn net.Conn, listener net.Listener) {
+	buffConn := make([]byte, BUFFSIZE)
+	buffOs := make([]byte, BUFFSIZE)
+	defer conn.Close()
+	if listener != nil {
+		listener.Close()
+	}
 
-	for {
-		n, err := in.Read(buff)
-		if err != nil {
-			errch <- err
-			return
+	// conn -> stdout
+	go func() {
+		for {
+			n, err := conn.Read(buffConn)
+			if err != nil {
+				errch <- err
+				return
+			}
+			os.Stdout.Write(buffConn[:n])
 		}
+	}()
 
-		out.Write(buff[:n])
+	// stdin -> conn
+	go func() {
+		for {
+			n, err := os.Stdin.Read(buffOs)
+			if err != nil {
+				errch <- err
+				return
+			}
+			conn.Write(buffOs[:n])
+		}
+	}()
+
+	switch err := <-errch; err {
+	case io.EOF:
+		log.Println(IPFX+"conexión terminada:", err)
+	default:
+		log.Fatalln(EPFX+"error en la conexión:", err)
 	}
 }
