@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -15,10 +16,11 @@ const (
 )
 
 var (
+	// argumentos de línea de órdenes
 	listen bool
 	quiet  bool
 	addr   string
-	errch  chan error = make(chan error, 1)
+	port   uint
 )
 
 func main() {
@@ -33,13 +35,19 @@ func main() {
 	}
 	log.Println(IPFX+"conectado a", conn.RemoteAddr())
 
-	handleConnections(conn, listener)
+	switch err = handleConnections(conn, listener); err {
+	case io.EOF:
+		log.Println(IPFX+"conexión terminada:", err)
+	default:
+		log.Fatalln(EPFX+"error en la conexión:", err)
+	}
 }
 
 func parseArgs() bool {
 	flag.BoolVar(&listen, "l", false, "Se queda a la escucha")
 	flag.BoolVar(&quiet, "q", false, "No imprime mensajes de debug")
-	flag.StringVar(&addr, "H", ":8080", "Direccion de la forma <IP>:<puerto>")
+	flag.StringVar(&addr, "H", "", "Direccion IP")
+	flag.UintVar(&port, "p", 8080, "Puerto")
 
 	flag.Parse()
 
@@ -52,22 +60,25 @@ func parseArgs() bool {
 }
 
 func getConn() (net.Conn, net.Listener, error) {
+	address := fmt.Sprintf("%s:%v", addr, port)
+
 	if listen {
-		listener, err := net.Listen("tcp", addr)
+		listener, err := net.Listen("tcp", address)
 		if err != nil {
 			return nil, nil, err
 		}
-		log.Println(IPFX+"servidor iniciado en", addr)
+		log.Println(IPFX+"servidor iniciado en", address)
 
 		conn, err := listener.Accept()
 		return conn, listener, err
 	} else {
-		conn, err := net.Dial("tcp", addr)
+		conn, err := net.Dial("tcp", address)
 		return conn, nil, err
 	}
 }
 
-func handleConnections(conn net.Conn, listener net.Listener) {
+func handleConnections(conn net.Conn, listener net.Listener) error {
+	var errch = make(chan error, 1)
 	buffConn := make([]byte, BUFFSIZE)
 	buffOs := make([]byte, BUFFSIZE)
 	defer conn.Close()
@@ -99,10 +110,5 @@ func handleConnections(conn net.Conn, listener net.Listener) {
 		}
 	}()
 
-	switch err := <-errch; err {
-	case io.EOF:
-		log.Println(IPFX+"conexión terminada:", err)
-	default:
-		log.Fatalln(EPFX+"error en la conexión:", err)
-	}
+	return <-errch
 }
