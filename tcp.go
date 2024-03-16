@@ -10,17 +10,17 @@ import (
 )
 
 const (
-	BUFFSIZE int    = 1024
-	IPFX     string = "[INFO] "
-	EPFX     string = "[ERROR] "
+	IPFX string = "[INFO] "
+	EPFX string = "[ERROR] "
 )
 
 var (
 	// argumentos de línea de órdenes
-	listen bool
-	quiet  bool
-	addr   string
-	port   uint
+	listen   bool
+	quiet    bool
+	addr     string
+	port     uint
+	buffsize uint
 )
 
 func main() {
@@ -47,6 +47,7 @@ func parseArgs() bool {
 	flag.BoolVar(&listen, "l", false, "Se queda a la escucha")
 	flag.BoolVar(&quiet, "q", false, "No imprime mensajes de debug")
 	flag.StringVar(&addr, "H", "", "Direccion IP")
+	flag.UintVar(&buffsize, "b", 1, "Tamaño del búffer (en KB)")
 	flag.UintVar(&port, "p", 8080, "Puerto")
 
 	flag.Parse()
@@ -79,8 +80,8 @@ func getConn() (net.Conn, net.Listener, error) {
 
 func handleConnections(conn net.Conn, listener net.Listener) error {
 	var errch = make(chan error, 1)
-	buffConn := make([]byte, BUFFSIZE)
-	buffOs := make([]byte, BUFFSIZE)
+	buffConn := make([]byte, 1024*buffsize)
+	buffOs := make([]byte, 1024*buffsize)
 	defer conn.Close()
 	if listener != nil {
 		listener.Close()
