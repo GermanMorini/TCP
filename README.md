@@ -22,4 +22,6 @@ tcp -l > archivo.csv                    # recibe un archivo
 tcp -q                                  # suprime los logs
 
 tcp -b SIZE                             # tamaño del buffer para enviar datos
+
+tcp -u                                  # Utiliza UDP en lugar de TCP
 ~~~

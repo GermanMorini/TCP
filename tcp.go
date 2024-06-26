@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"time"
 )
 
 const (
@@ -26,6 +27,42 @@ var (
 	errch    chan error = make(chan error, 1)
 )
 
+// implementación de net.Listener para una conexión UDP
+type UDPListener struct{}
+
+func (l *UDPListener) Accept() (net.Conn, error) {
+	conn, err := net.ListenPacket("udp", addr)
+	return &UDPConn{conn: conn}, err
+}
+func (l *UDPListener) Close() error   { return nil }
+func (l *UDPListener) Addr() net.Addr { return nil }
+
+// implementación de net.Conn para una conexión UDP
+type UDPConn struct {
+	conn net.PacketConn
+	addr net.Addr
+}
+
+func (c *UDPConn) Read(p []byte) (int, error) {
+	var n int
+	var err error
+
+	n, c.addr, err = c.conn.ReadFrom(p)
+	return n, err
+}
+
+func (c *UDPConn) Write(p []byte) (int, error) {
+	n, err := c.conn.WriteTo(p, c.addr)
+	return n, err
+}
+
+func (c *UDPConn) Close() error                       { return c.conn.Close() }
+func (c *UDPConn) LocalAddr() net.Addr                { return c.conn.LocalAddr() }
+func (c *UDPConn) RemoteAddr() net.Addr               { return c.conn.LocalAddr() }
+func (c *UDPConn) SetDeadline(t time.Time) error      { return nil }
+func (c *UDPConn) SetReadDeadline(t time.Time) error  { return nil }
+func (c *UDPConn) SetWriteDeadline(t time.Time) error { return nil }
+
 func main() {
 	log.SetOutput(os.Stderr)
 
@@ -34,12 +71,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	var err error
 	var listener net.Listener
 	var conn net.Conn
-	var err error
 
 	if listen {
-		listener, err = net.Listen("tcp", addr)
+		listener, err = getListener()
 		if err != nil {
 			log.Fatalln(EPFX+"conexión fallida:", err)
 		}
@@ -94,6 +131,14 @@ func parseArgs() bool {
 	addr = fmt.Sprintf("%s:%v", addr, port)
 
 	return flag.Parsed()
+}
+
+func getListener() (net.Listener, error) {
+	if proto == "udp" {
+		return &UDPListener{}, nil
+	} else {
+		return net.Listen("tcp", addr)
+	}
 }
 
 func getConn(ln net.Listener) (net.Conn, error) {
