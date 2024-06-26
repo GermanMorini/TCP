@@ -20,6 +20,7 @@ var (
 	listen   bool
 	quiet    bool
 	addr     string
+	proto    string
 	port     uint
 	buffsize uint
 	errch    chan error = make(chan error, 1)
@@ -69,12 +70,21 @@ func main() {
 }
 
 func parseArgs() bool {
+	var udp bool
+
 	flag.BoolVar(&listen, "l", false, "Se queda a la escucha")
 	flag.BoolVar(&quiet, "q", false, "No imprime mensajes de debug")
+	flag.BoolVar(&udp, "u", false, "Utiliza UDP en lugar de TCP")
 	flag.StringVar(&addr, "H", "", "Direccion IP")
 	flag.UintVar(&buffsize, "b", 1, "Tamaño del búffer (en KB)")
 	flag.UintVar(&port, "p", 8080, "Puerto")
 	flag.Parse()
+
+	if udp {
+		proto = "udp"
+	} else {
+		proto = "tcp"
+	}
 
 	if quiet {
 		log.SetFlags(0)
@@ -90,7 +100,7 @@ func getConn(ln net.Listener) (net.Conn, error) {
 	if ln != nil {
 		return ln.Accept()
 	} else {
-		return net.Dial("tcp", addr)
+		return net.Dial(proto, addr)
 	}
 }
 
