@@ -17,6 +17,8 @@ const (
 )
 
 var (
+	errch chan error = make(chan error, 1)
+
 	// argumentos de línea de comandos
 	listen   bool
 	quiet    bool
@@ -24,7 +26,6 @@ var (
 	proto    string
 	port     uint
 	buffsize uint
-	errch    chan error = make(chan error, 1)
 )
 
 // implementación de net.Listener para una conexión UDP
@@ -64,8 +65,6 @@ func (c *UDPConn) SetReadDeadline(t time.Time) error  { return nil }
 func (c *UDPConn) SetWriteDeadline(t time.Time) error { return nil }
 
 func main() {
-	log.SetOutput(os.Stderr)
-
 	if !parseArgs() {
 		flag.PrintDefaults()
 		os.Exit(1)
@@ -126,6 +125,8 @@ func parseArgs() bool {
 	if quiet {
 		log.SetFlags(0)
 		log.SetOutput(io.Discard)
+	} else {
+		log.SetOutput(os.Stderr)
 	}
 
 	addr = fmt.Sprintf("%s:%v", addr, port)
