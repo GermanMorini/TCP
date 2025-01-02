@@ -11,11 +11,6 @@ import (
 	"time"
 )
 
-const (
-	IPFX string = "[INFO] "
-	EPFX string = "[ERROR] "
-)
-
 var (
 	errch chan error = make(chan error, 1)
 
@@ -74,21 +69,21 @@ func main() {
 	var listener net.Listener
 	var conn net.Conn
 
+	log.Println("PID del proceso:", os.Getpid())
 	if listen {
 		listener, err = getListener()
 		if err != nil {
-			log.Fatalln(EPFX+"conexión fallida:", err)
+			log.Fatalln("conexión fallida:", err)
 		}
-		log.Println(IPFX+"servidor iniciado en", addr)
+		log.Println("servidor iniciado en", addr)
 		defer listener.Close()
 	}
 
 	conn, err = getConn(listener)
 	if err != nil {
-		log.Fatalln(EPFX+"conexión fallida:", err)
+		log.Fatalln("conexión fallida:", err)
 	}
-	log.Printf("%sconectado a %s (%s)\n",
-		IPFX,
+	log.Printf("conectado a %s (%s)\n",
 		conn.RemoteAddr().String(),
 		strings.Split(conn.LocalAddr().String(), ":")[1],
 	)
@@ -99,9 +94,9 @@ func main() {
 
 	switch err = <-errch; err {
 	case io.EOF:
-		log.Println(IPFX+"conexión terminada:", err)
+		log.Println("conexión terminada:", err)
 	default:
-		log.Fatalln(EPFX+"error en la conexión:", err)
+		log.Fatalln("error en la conexión:", err)
 	}
 }
 
