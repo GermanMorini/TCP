@@ -79,6 +79,9 @@ func main() {
 	var listener net.Listener
 	var conn net.Conn
 
+	if !enc {
+		log.Println("Advertencia: la conexión NO es segura. Activá el cifrado con '-e'")
+	}
 	log.Println("PID del proceso:", os.Getpid())
 	if listen {
 		listener, err = getListener()
