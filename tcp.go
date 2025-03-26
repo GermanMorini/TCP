@@ -15,6 +15,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/fatih/color"
 )
 
 var (
@@ -28,6 +30,10 @@ var (
 	proto    string
 	port     uint
 	buffsize uint
+
+	INFOPF = color.GreenString("[INFO] ")
+	WARNPF = color.YellowString("[WARN] ")
+	ERRPF  = color.RedString("[ERROR] ")
 )
 
 const (
@@ -80,26 +86,26 @@ func main() {
 	var conn net.Conn
 
 	if !enc {
-		log.Println("Advertencia: la conexión NO es segura. Activá el cifrado con '-e'")
+		log.Println(WARNPF + "la conexión NO es segura. Activá el cifrado con '-e'")
 	}
-	log.Println("PID del proceso:", os.Getpid())
+	log.Println(INFOPF+"PID del proceso:", os.Getpid())
 	if listen {
 		listener, err = getListener()
 		if err != nil {
-			log.Fatalln("Error iniciando servidor:", err)
+			log.Fatalln(ERRPF+"error iniciando servidor:", err)
 		}
-		log.Println("Servidor escuchando en", addr)
+		log.Println(INFOPF+"servidor escuchando en", addr)
 		defer listener.Close()
 	}
 
 	conn, err = getConn(listener)
 	if err != nil {
-		log.Fatalln("Error conectando:", err)
+		log.Fatalln(ERRPF+"error conectando:", err)
 	}
 	if proto != "udp" {
-		log.Printf("Conexión establecida con %s (%s)\n",
-			conn.RemoteAddr().String(),
-			strings.Split(conn.LocalAddr().String(), ":")[1],
+		log.Printf(INFOPF+"conexión establecida con %s (%s)\n",
+			   conn.RemoteAddr().String(),
+			   strings.Split(conn.LocalAddr().String(), ":")[1],
 		)
 	}
 	defer conn.Close()
@@ -108,10 +114,10 @@ func main() {
 	go readWriteLoop(os.Stdin, conn)
 
 	switch err = <-errch; err {
-	case io.EOF:
-		log.Println("Conexión cerrada:", err)
-	default:
-		log.Fatalln("Error en la conexión:", err)
+		case io.EOF:
+			log.Println(INFOPF+"conexión cerrada:", err)
+		default:
+			log.Fatalln(ERRPF+"error en la conexión:", err)
 	}
 }
 
